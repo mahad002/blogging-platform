@@ -118,4 +118,24 @@ router.get('/post/:postId', async (req, res) => {
     }
 });
 
+// Disable a blog
+router.post('/disable-post/:postId', async (req, res) => {
+    try {
+        const postId = req.params.postId;
+        const post = await Post.findById(postId);
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found.' });
+        }
+
+        post.disabled = true;
+        await post.save();
+
+        res.json({ message: 'Post disabled successfully.' });
+    } catch (error) {
+        console.error('Error disabling post:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router;
