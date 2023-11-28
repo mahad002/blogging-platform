@@ -1,8 +1,43 @@
-const express = require('express');
+/**
+ * @swagger
+ * tags:
+ *   name: Interaction
+ *   description: API endpoints for user interactions.
+ */
+
+const express = require('express'),
+bodyParser = require("body-parser"),
+swaggerJsdoc = require("swagger-jsdoc"),
+swaggerUi = require("swagger-ui-express");
 const router = express.Router();
 const User = require('../models/user');
 const Post = require('../models/post');
 const AuthMiddleware = require('../middlewares/UserAuth');
+
+/**
+ * @swagger
+ * /interaction/profile/follow/{userId}:
+ *   post:
+ *     summary: Follow a blogger
+ *     description: Follow a blogger by providing the blogger's user ID.
+ *     tags: [Interaction]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the blogger to follow.
+ *     responses:
+ *       200:
+ *         description: Successfully followed the blogger.
+ *       400:
+ *         description: Bad request or user is already following the blogger.
+ *       401:
+ *         description: User not authenticated.
+ *       404:
+ *         description: User to follow not found.
+ *       500:
+ *         description: Internal server error.
+ */
 
 // Follow a blogger
 router.post('/profile/follow/:userId', AuthMiddleware, async (req, res) => {
@@ -56,6 +91,31 @@ router.post('/profile/follow/:userId', AuthMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /interaction/profile/unfollow/{userId}:
+ *   post:
+ *     summary: Unfollow a blogger
+ *     description: Unfollow a blogger by providing the blogger's user ID.
+ *     tags: [Interaction]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the blogger to unfollow.
+ *     responses:
+ *       200:
+ *         description: Successfully unfollowed the blogger.
+ *       400:
+ *         description: Bad request or user is not following the blogger.
+ *       401:
+ *         description: User not authenticated.
+ *       404:
+ *         description: User to unfollow not found.
+ *       500:
+ *         description: Internal server error.
+ */
+
 
 // Unfollow a blogger
 router.post('/profile/unfollow/:userId', AuthMiddleware, async (req, res) => {
@@ -97,6 +157,30 @@ router.post('/profile/unfollow/:userId', AuthMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+
+/**
+ * @swagger
+ * /interaction/profile/{userId}:
+ *   get:
+ *     summary: Get user profile and posts if the requester is following
+ *     description: Get user profile and posts for a specific user if the requester is following that user.
+ *     tags: [Interaction]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user to access.
+ *     responses:
+ *       200:
+ *         description: User profile and posts.
+ *       401:
+ *         description: User is not following the requested user. Access denied.
+ *       404:
+ *         description: User to access not found.
+ *       500:
+ *         description: Internal server error.
+ */
 
 // Get user profile and posts if the requester is following
 router.get('/profile/:userId', AuthMiddleware, async (req, res) => {

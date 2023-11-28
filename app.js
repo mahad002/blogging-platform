@@ -1,30 +1,7 @@
-// const express = require('express');
-// const mongoose = require('mongoose');
-// const cors = require('cors');
-// const UserRoutes = require('../routes/user');
-
-// const app = express();
-
-// mongoose.connect('mongoose://127.0.0.1:27017/blogplatform',{
-//         useNewUrlParser: true,
-//         useUnifiedTopology: true
-//     }).
-//     then(() => console.log('Connected to MongoDB')).
-//     catch(err => console.error('Could not connect to MongoDB'));
-
-// app.use(express.json());
-// app.use(cors());
-
-// //app.use('/user', require('./routes/user'));
-// app.use('/user', UserRoutes);
-
-
-// const port = process.env.PORT || 3000;
-
-// app.listen(post, () => console.log(`Server started on port ${post}`));
-
-
-const express = require('express');
+const express = require('express'),
+bodyParser = require("body-parser"),
+swaggerJsdoc = require("swagger-jsdoc"),
+swaggerUi = require("swagger-ui-express");
 const mongoose = require('mongoose');
 const UserRoutes = require('./routes/user');
 const PostRoutes = require('./routes/post');
@@ -41,8 +18,41 @@ mongoose.connect('mongodb://127.0.0.1:27017/blogplatform').
     then(() => console.log('Connected to MongoDB')).
     catch(err => console.error(err));
 
-app.use(express.json());
+const options = {
+  definition: {
+    openapi: "3.1.0",
+    info: {
+      title: "Blog Platform By Mahad",
+      version: "0.1.0",
+      description:
+        "This is a blog posting platform where users can enjoy public blogs and share there blogs.",
+    //   license: {
+    //     name: "MIT",
+    //     url: "https://spdx.org/licenses/MIT.html",
+    //   },
+    //   contact: {
+    //     name: "LogRocket",
+    //     url: "https://logrocket.com",
+    //     email: "info@email.com",
+    //   },
+    },
+    servers: [
+      {
+        url: "http://localhost:3001",
+      },
+    ],
+  },
+  apis: ["./routes/*.js"],
+};
+
+const specs = swaggerJsdoc(options);
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(specs, {explorer: true})
+);
 app.use(cors());
+app.use(express.json());
 
 
 app.use('/user', UserRoutes);

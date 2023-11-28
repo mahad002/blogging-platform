@@ -1,23 +1,60 @@
-const express = require('express');
+/**
+ * @swagger
+ * tags:
+ *   name: Posts
+ *   description: API operations related to blog posts
+ */
+
+const express = require('express'),
+bodyParser = require("body-parser"),
+swaggerJsdoc = require("swagger-jsdoc"),
+swaggerUi = require("swagger-ui-express");
 const router = express.Router();
 const AuthMiddleware = require('../middlewares/UserAuth');
 const Post = require('../models/post');
 const User = require('../models/user');
 
+/**
+ * @swagger
+ * /post/create:
+ *   post:
+ *     summary: Create a new blog post
+ *     description: Create a new blog post and associate it with the authenticated user.
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Post'
+ *     responses:
+ *       200:
+ *         description: Blog post created successfully.
+ *       401:
+ *         description: Authentication failed: User not found.
+ *       500:
+ *         description: Internal server error.
+ */
+
 // Create a new blog post
 router.post('/create', AuthMiddleware, async (req, res) => {
     try {
-        const { title, content } = req.body;
+        const { title, content, category, disabled, creationDate, pictures, author, comments, ratings } = req.body;
 
         // Create a new post
         const newPost = new Post({
             title,
             content,
-            author: req.body.user._Id, // Set the author as the authenticated user
+            category,
+            disabled,
+            creationDate,
+            pictures,
+            author,
+            comments,
+            ratings,
         });
-
-        // Save the post
-        await newPost.save();
 
         // Associate the post with the user
         console.log(req.body.user, "Printed");
@@ -28,6 +65,9 @@ router.post('/create', AuthMiddleware, async (req, res) => {
             res.status(401).json({ error: 'Authentication failed: User not found' });
             return; // Exit the function here
         }
+        console.log("Author:" , newPost.author);
+        // Save the post
+        await newPost.save();
 
         console.log('becbvre');
 
@@ -49,15 +89,36 @@ router.post('/create', AuthMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /post:
+ *   get:
+ *     summary: Get posts for a specific user
+ *     description: Retrieve posts for the authenticated user.
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User and posts retrieved successfully.
+ *       401:
+ *         description: User not authenticated.
+ *       404:
+ *         description: User not found.
+ *       500:
+ *         description: Internal server error.
+ */
+
 // Get posts for a specific user
 router.get('/', AuthMiddleware, async (req, res) => {
+    console.log(req.body.user);
     try {
         if (!req.body || !req.body.user) {
             return res.status(401).json({ message: 'User not authenticated.' });
         }
         
         // const userId = req.body.user._id;
-
+        console.log(req.body.user);
         const user = await User.findById(req.body.user._id);
 
         if (!user) {
@@ -65,7 +126,7 @@ router.get('/', AuthMiddleware, async (req, res) => {
         }
 
         // Assuming the user model has an array of post IDs
-        const postIds = user.posts;
+        const postIds = await Post.find();
 
         // Query the posts based on the post IDs
         const posts = await Post.find({ _id: { $in: postIds } });
@@ -79,6 +140,94 @@ router.get('/', AuthMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /post/{postId}:
+ *   get:
+ *     summary: Get a specific blog post by ID
+ *     description: Retrieve a specific blog post by its ID.
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the blog post to retrieve.
+ *     responses:
+ *       200:
+ *         description: Blog post retrieved successfully.
+ *       401:
+ *         description: User not authenticated.
+ *       404:
+ *         description: Post not found.
+ *       500:
+ *         description: Internal server error.
+ */
+
+// Get a specific blog post by ID
+router.get('/:postId', AuthMiddleware, async (req, res) => {
+    try {
+        const postId = req.params.postId;
+
+        // Find the post by ID
+        const post = await Post.findById(postId);
+
+        // Check if the post exists
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found.' });
+        }
+
+        // // Check if the post exists and if the authenticated user has permission to view the post
+        // if (!post.author || !post.author.equals(req.body.user._id)) {
+        //     return res.status(403).json({ message: 'Unauthorized: You do not have permission to view this post.' });
+        // }
+
+        res.json({ post });
+    } catch (err) {
+        console.error('Error in getting blog post by ID:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /post/update/{postId}:
+ *   put:
+ *     summary: Update a blog post
+ *     description: Update the title of a specific blog post.
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the blog post to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: The new title of the blog post
+ *             required:
+ *               - title
+ *     responses:
+ *       200:
+ *         description: Blog post updated successfully.
+ *       404:
+ *         description: User or post not found.
+ *       500:
+ *         description: Internal server error.
+ */
   
 // Update a blog post
 router.put('/update/:postId', AuthMiddleware, async (req, res) => {
@@ -125,6 +274,31 @@ router.put('/update/:postId', AuthMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+/**
+ * @swagger
+ * /post/delete/{postId}:
+ *   delete:
+ *     summary: Delete a specific user's post
+ *     description: Delete a specific blog post associated with the authenticated user.
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the blog post to delete.
+ *     responses:
+ *       200:
+ *         description: Blog post deleted successfully.
+ *       404:
+ *         description: User or post not found.
+ *       500:
+ *         description: Internal server error.
+ */
 
 
 // Delete a specific user's post
@@ -230,6 +404,38 @@ router.delete('/delete/:postId', AuthMiddleware, async (req, res) => {
 
 // I can also do this '/comment/:postId/:userId'
 // Add a comment to a blog post
+
+/**
+ * @swagger
+ * /post/comment/{postId}:
+ *   post:
+ *     summary: Add a comment to a blog post
+ *     description: Add a comment to a specific blog post.
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the blog post to add a comment to.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Comment'
+ *     responses:
+ *       200:
+ *         description: Comment added successfully.
+ *       404:
+ *         description: Post not found.
+ *       500:
+ *         description: Internal server error.
+ */
+
 router.post('/comment/:postId', AuthMiddleware, async (req, res) => {
     try {
         const { text } = req.body;
@@ -272,6 +478,39 @@ router.post('/comment/:postId', AuthMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /post/rate/{postId}:
+ *   post:
+ *     summary: Add a rating to a blog post
+ *     description: Add a rating to a specific blog post.
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the blog post to add a rating to.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Rating'
+ *     responses:
+ *       200:
+ *         description: Rating added successfully.
+ *       400:
+ *         description: You have already rated this post.
+ *       404:
+ *         description: Post not found.
+ *       500:
+ *         description: Internal server error.
+ */
+
 //'/rate/:postId/:userId'
 // Add a rating to a blog post
 router.post('/rate/:postId', AuthMiddleware, async (req, res) => {
@@ -304,7 +543,7 @@ router.post('/rate/:postId', AuthMiddleware, async (req, res) => {
 
         // Generate notification
         const notification = {
-            text: `${ratingAuthor.username} rated your post: "${post.title}" with ${value || 1} stars.`,
+            text: `${ratingAuthor.username} rated your post: ${post.title} with ${value || 1} stars.`,
             from: ratingAuthor._id,
             read: false,
         };
@@ -313,7 +552,7 @@ router.post('/rate/:postId', AuthMiddleware, async (req, res) => {
 
         // Add the notification to the post author's notifications
         const postAuthor = await User.findOne({ posts: postId });
-        const text = '${ratingAuthor.username} rated your post: "${post.title}" with ${value || 1} stars.';
+        const text = `${ratingAuthor.username} rated your post: ${post.title} with ${value || 1} stars.`;
         const from = ratingAuthor._id;
         const read =  false;
         console.log(postAuthor);
